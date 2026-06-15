@@ -1,3 +1,4 @@
+import os
 import fitz  # PyMuPDF
 from langchain_community.vectorstores import Chroma
 from langchain_text_splitters import RecursiveCharacterTextSplitter
@@ -5,7 +6,11 @@ from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_community.embeddings import SentenceTransformerEmbeddings
 
 # ✅ Step 1: Extract text from the PDF
-pdf_path = "/content/drive/MyDrive/ImamGPT/alrraheq_almakhtom_new.pdf"  # Change if needed
+# Resolve relative to this file so it works from any cwd (Colab, local, etc.)
+pdf_path = os.environ.get(
+    "IMAMGPT_PDF_PATH",
+    os.path.join(os.path.dirname(os.path.abspath(__file__)), "alrraheq_almakhtom_new.pdf"),
+)
 
 def extract_text_from_pdf(pdf_path):
     """Extracts text from each page of the PDF."""
