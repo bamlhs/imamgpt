@@ -132,3 +132,6 @@ ngrok.yml
 # Misc
 *.tmp
 *.bak
+
+# Lazy-downloaded Sunni reference corpus (fetched from archive.org on first run)
+corpus/
