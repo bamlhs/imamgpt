@@ -12,33 +12,44 @@ CORPUS_DIR = os.environ.get("IMAMGPT_CORPUS_DIR", os.path.join(BASE_DIR, "corpus
 
 # Sunni reference texts hosted on archive.org. Pulled on first run, cached on disk
 # so subsequent Cell 2 restarts (same VM) skip the download.
+# We use archive.org's `_text.pdf` derivatives where the source is an image-scan,
+# because those carry an OCR'd text layer that PyMuPDF can actually extract.
 # Tuple format: (local_filename, archive.org_identifier, archive.org_filename)
 BOOKS = [
     (
-        "alraheeq_almakhtoom.pdf",
-        "sealed_nectar",
-        "sealed_nectar.pdf",
+        "alraheeq_almakhtoom_text.pdf",
+        "Ar-Raheeq.Al-Makhtum",
+        "المُباركفوري - الرّحيق المختوم_text.pdf",
     ),
     (
-        "kitab_at_tawhid.pdf",
+        "kitab_at_tawhid_text.pdf",
         "kitab-tawe7id",
-        "كتاب التوحيد للشيخ محمد بن عبد الوهاب .pdf",
+        "كتاب التوحيد للشيخ محمد بن عبد الوهاب _text.pdf",
     ),
     (
-        "arbaeen_nawawi.pdf",
+        "arbaeen_nawawi_text.pdf",
         "Matn_alarbaein_alnawawiuh",
-        "متن الأربعين النوويه.pdf",
+        "متن الأربعين النوويه_text.pdf",
     ),
     (
-        "riyad_as_salihin.pdf",
+        "riyad_as_salihin_text.pdf",
         "rsnawwy",
-        "rs.pdf",
+        "rs_text.pdf",
     ),
     (
-        "fiqh_us_sunnah.pdf",
+        "fiqh_us_sunnah.pdf",  # already a text PDF, extracts cleanly
         "20191127_20191127_1241",
         "فقه السنة - السيد سابق (ط) دار الحديث.pdf",
     ),
+]
+
+# Earlier release shipped image-only PDFs that PyMuPDF returned 0 chunks for.
+# Delete the stale cache so the new _text.pdf variants get downloaded.
+STALE_FILENAMES = [
+    "alraheeq_almakhtoom.pdf",
+    "kitab_at_tawhid.pdf",
+    "arbaeen_nawawi.pdf",
+    "riyad_as_salihin.pdf",
 ]
 
 
@@ -51,6 +62,11 @@ def _archive_url(identifier: str, filename: str) -> str:
 
 def ensure_corpus():
     os.makedirs(CORPUS_DIR, exist_ok=True)
+    for stale in STALE_FILENAMES:
+        stale_path = os.path.join(CORPUS_DIR, stale)
+        if os.path.exists(stale_path):
+            os.remove(stale_path)
+            print(f"[ImamGPT] removed stale image-only cache: {stale}")
     for local, ident, fname in BOOKS:
         path = os.path.join(CORPUS_DIR, local)
         if os.path.exists(path) and os.path.getsize(path) > 0:
