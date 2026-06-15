@@ -4,16 +4,20 @@ import torch
 model_name = "tiiuae/falcon-7b-instruct"
 tokenizer = AutoTokenizer.from_pretrained(model_name)
 
-# ✅ Enable 4-bit and Offload to CPU
+# 4-bit on GPU only — Falcon-7B in nf4 (~4 GB) fits comfortably on a T4 (16 GB),
+# so we don't need CPU/disk offload. The previous `llm_int8_enable_fp32_cpu_offload=True`
+# combined with `device_map="auto"` was leaving some weights on the meta device,
+# which crashed inference with: "Tensor on device meta is not on the expected device cuda:0".
 quantization_config = BitsAndBytesConfig(
     load_in_4bit=True,
-    llm_int8_enable_fp32_cpu_offload=True  # Moves part of the model to CPU
+    bnb_4bit_quant_type="nf4",
+    bnb_4bit_compute_dtype=torch.float16,
 )
 
 model = AutoModelForCausalLM.from_pretrained(
-    model_name, 
-    device_map="auto",  
-    quantization_config=quantization_config
+    model_name,
+    device_map={"": 0},  # pin everything to GPU 0, no offload
+    quantization_config=quantization_config,
 )
 
 
