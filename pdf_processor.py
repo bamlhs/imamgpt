@@ -15,6 +15,11 @@ CORPUS_DIR = os.environ.get("IMAMGPT_CORPUS_DIR", os.path.join(BASE_DIR, "corpus
 # Tuple format: (local_filename, archive.org_identifier, archive.org_filename)
 BOOKS = [
     (
+        "alraheeq_almakhtoom.pdf",
+        "sealed_nectar",
+        "sealed_nectar.pdf",
+    ),
+    (
         "kitab_at_tawhid.pdf",
         "kitab-tawe7id",
         "كتاب التوحيد للشيخ محمد بن عبد الوهاب .pdf",
@@ -65,14 +70,11 @@ def extract_text_from_pdf(path):
 
 ensure_corpus()
 
-# Combine the original PDF (kept in the repo root) with every PDF in corpus/.
-_sources = []
-_legacy = os.path.join(BASE_DIR, "alrraheq_almakhtom_new.pdf")
-if os.path.exists(_legacy):
-    _sources.append(_legacy)
-for fname in sorted(os.listdir(CORPUS_DIR)):
-    if fname.lower().endswith(".pdf"):
-        _sources.append(os.path.join(CORPUS_DIR, fname))
+_sources = [
+    os.path.join(CORPUS_DIR, fname)
+    for fname in sorted(os.listdir(CORPUS_DIR))
+    if fname.lower().endswith(".pdf")
+]
 
 text_splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=200)
 all_chunks = []
