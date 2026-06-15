@@ -52,6 +52,16 @@ STALE_FILENAMES = [
     "riyad_as_salihin.pdf",
 ]
 
+# Human-readable book titles, used as Chroma metadata so the /chat endpoint can
+# return citations alongside the answer.
+TITLES = {
+    "alraheeq_almakhtoom_text.pdf": "الرحيق المختوم — صفي الرحمن المباركفوري",
+    "kitab_at_tawhid_text.pdf": "كتاب التوحيد — محمد بن عبد الوهاب",
+    "arbaeen_nawawi_text.pdf": "الأربعون النووية — النووي",
+    "riyad_as_salihin_text.pdf": "رياض الصالحين — النووي",
+    "fiqh_us_sunnah.pdf": "فقه السنة — السيد سابق",
+}
+
 
 def _archive_url(identifier: str, filename: str) -> str:
     return (
@@ -94,20 +104,39 @@ _sources = [
 
 text_splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=200)
 all_chunks = []
+all_metadatas = []
 for src in _sources:
+    fname = os.path.basename(src)
+    title = TITLES.get(fname, fname)
     text = extract_text_from_pdf(src)
     chunks = text_splitter.split_text(text)
-    print(f"[ImamGPT] indexed {os.path.basename(src)}: {len(chunks)} chunks")
+    print(f"[ImamGPT] indexed {fname}: {len(chunks)} chunks")
     all_chunks.extend(chunks)
+    all_metadatas.extend([{"source": title}] * len(chunks))
 
 embeddings = SentenceTransformerEmbeddings(
     model_name="sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
 )
-vectorstore = Chroma.from_texts(all_chunks, embedding=embeddings)
+vectorstore = Chroma.from_texts(
+    all_chunks, embedding=embeddings, metadatas=all_metadatas
+)
 
 
 def search_relevant_text(query):
-    """Searches the most relevant content in the stored PDF chunks."""
+    """Returns (context_text, sources) for a query.
+
+    sources is a deduplicated, retrieval-order list of book titles that
+    contributed at least one chunk to the returned context.
+    """
     results = vectorstore.similarity_search(query, k=3)
-    relevant_text = " ".join([doc.page_content for doc in results])
-    return relevant_text[:2000]
+    relevant_text = " ".join(doc.page_content for doc in results)
+
+    sources = []
+    seen = set()
+    for doc in results:
+        title = doc.metadata.get("source") if doc.metadata else None
+        if title and title not in seen:
+            seen.add(title)
+            sources.append(title)
+
+    return relevant_text[:2000], sources

@@ -36,9 +36,14 @@ INDEX_HTML = """<!doctype html>
   #status { margin-top: 0.5rem; color: #888; font-size: 0.9rem; min-height: 1.2em; }
   #response { margin-top: 1.5rem; padding: 1rem; background: #f5f5f5; color: #111;
               border-radius: 6px; white-space: pre-wrap; min-height: 4rem; }
+  #sources { margin-top: 0.75rem; font-size: 0.92rem; }
+  #sources .label { color: #888; margin-bottom: 0.25rem; }
+  #sources ul { margin: 0; padding-inline-start: 1.4rem; }
+  #sources li { color: #444; }
   @media (prefers-color-scheme: dark) {
     #response { background: #1e1e1e; color: #eee; }
     textarea { background: #1e1e1e; color: #eee; border-color: #333; }
+    #sources li { color: #bbb; }
   }
 </style>
 </head>
@@ -51,12 +56,31 @@ INDEX_HTML = """<!doctype html>
     <div id="status"></div>
   </form>
   <div id="response"></div>
+  <div id="sources"></div>
 <script>
 const f = document.getElementById('f');
 const q = document.getElementById('q');
 const r = document.getElementById('response');
+const srcBox = document.getElementById('sources');
 const s = document.getElementById('status');
 const b = document.getElementById('btn');
+
+function renderSources(sources) {
+  srcBox.innerHTML = '';
+  if (!sources || !sources.length) return;
+  const label = document.createElement('div');
+  label.className = 'label';
+  label.textContent = 'المصادر:';
+  srcBox.appendChild(label);
+  const ul = document.createElement('ul');
+  for (const src of sources) {
+    const li = document.createElement('li');
+    li.textContent = src;
+    ul.appendChild(li);
+  }
+  srcBox.appendChild(ul);
+}
+
 f.addEventListener('submit', async (e) => {
   e.preventDefault();
   const txt = q.value.trim();
@@ -64,6 +88,7 @@ f.addEventListener('submit', async (e) => {
   b.disabled = true;
   s.textContent = '...جاري التحميل';
   r.textContent = '';
+  srcBox.innerHTML = '';
   const t0 = performance.now();
   try {
     const res = await fetch('/chat', {
@@ -73,6 +98,7 @@ f.addEventListener('submit', async (e) => {
     });
     const data = await res.json();
     r.textContent = data.response || JSON.stringify(data, null, 2);
+    renderSources(data.sources);
     s.textContent = '(' + Math.round((performance.now() - t0) / 1000) + 's)';
   } catch (err) {
     r.textContent = 'خطأ: ' + err.message;
@@ -99,9 +125,9 @@ def health():
 
 @app.post("/chat")
 def chat(request: ChatRequest):
-    context = search_relevant_text(request.input_text)
+    context, sources = search_relevant_text(request.input_text)
     response = generate_answer(request.input_text, context)
-    return {"response": response}
+    return {"response": response, "sources": sources}
 
 
 subdomain = "imamgpt"
